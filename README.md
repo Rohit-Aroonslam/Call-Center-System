@@ -3,12 +3,12 @@
 ## 📌 Project Overview
 This project is a Call Center Request Handling Application developed for the ONT412 Assignment.
 
-The system simulates how customer requests are processed in a call center environment:
-- Requests enter at the **agent level**
-- If unresolved, they are escalated to a **supervisor**
-- Finally, they may reach a **manager** for resolution
+The system simulates how a student call center manages calls between students and technicians:
+- Students and technicians can make, hold, and drop calls
+- The manager can browse and search the virtual call log to return a call
+- Calls can be grouped and controlled through structured, secure access
 
-The project demonstrates the implementation of the **Chain of Responsibility design pattern** using C# and .NET Console Application, showcasing decoupled request routing and flexible handler chains.
+The project demonstrates the implementation of the **Iterator, State, Composite, and Proxy design patterns** using C# and .NET, showcasing call log traversal, call state management, hierarchical grouping, and controlled access.
 
 ---
 
@@ -35,25 +35,31 @@ The project demonstrates the implementation of the **Chain of Responsibility des
 
 ## 🎯 Design Pattern Implemented
 
-| Design Pattern | Purpose |
+| Design&nbsp;Pattern | Purpose |
 |----------------|---------|
-| **Iterator** | Allows traversal through lists of calls, agents, or requests without exposing internal structure. | Provides clean sequential access to call records and staff lists. |
-| **State** | Manages call states such as *On Call*, *On Hold*, *Resolved*, or *Escalated*. | Models real-world call transitions and behavior changes. |
-| **Proxy** | Controls access to call logs or restricted actions (e.g., manager-only operations). | Adds a layer of security and controlled access in the system. |
-| **Composite** | Represents hierarchical structures (e.g., grouping multiple calls or organizing staff under departments). | Enables treating individual and grouped entities uniformly. |
+| **Iterator** | Allows traversal through the call log without exposing its internal structure, and supports searching for a specific call to return. |
+| **State** | Manages call states such as *On Call*, *On Hold*, and *Ended*. |
+| **Proxy** | Controls access to call logs or restricted actions (e.g., manager-only operations). |
+| **Composite** | Represents hierarchical structures (e.g., grouping multiple calls or organizing staff under departments). |
 
 ---
 
 ## 📂 Project Structure
 
 ```text
-CallCenterRequestSystem
+CallCenterSystem
 │
-├── Handlers
-│   ├── AgentHandler.cs
-│   ├── SupervisorHandler.cs
-│   ├── ManagerHandler.cs
+├── Components
+│   ├── Layout
+│   ├── Pages
+│   └── ...
 │
-├── Models
 ├── Interfaces
+├── Models
+├── Services
+│   ├── Iterator
+│   ├── State
+│   ├── Composite
+│   └── Proxy
 └── Program.cs
+```
