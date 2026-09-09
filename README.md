@@ -29,7 +29,7 @@ The project demonstrates the implementation of the **Iterator, State, Composite,
 - C#
 - .NET 8
 - Visual Studio 2022
-- GitHub
+- Blazor
 
 ---
 
