@@ -1,0 +1,101 @@
+@page "/call-log"
+@rendermode InteractiveServer
+@inject CallCenterAppService AppService
+
+<PageTitle>Call Log — Student Support Call Center</PageTitle>
+
+<h3 class="mb-4">Call Log</h3>
+<p class="text-muted">Browse and search through logged calls, or record a new one.</p>
+
+<div class="row g-4">
+    <!-- Log a new call -->
+    <div class="col-md-5">
+        <div class="card">
+            <div class="card-header fw-semibold">Log a New Call</div>
+            <div class="card-body">
+                <div class="mb-3">
+                    <label class="form-label">Caller Name</label>
+                    <input class="form-control" @bind="callerName" @bind:event="oninput" />
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Phone Number (10 digits)</label>
+                    <input class="form-control" @bind="phoneNumber" @bind:event="oninput" />
+                </div>
+
+                @if (errorMessage != "")
+                {
+                    <div class="alert alert-danger py-2">@errorMessage</div>
+                }
+
+                <button class="btn btn-primary" @onclick="HandleAddCall">Log Call</button>
+            </div>
+        </div>
+
+        <!-- Search / return-call lookup -->
+        <div class="card mt-3">
+            <div class="card-header fw-semibold">Search for a Call</div>
+            <div class="card-body">
+                <div class="input-group mb-2">
+                    <input class="form-control" placeholder="Call ID" @bind="searchId" @bind:event="oninput" />
+                    <button class="btn btn-outline-secondary" @onclick="HandleSearch">Search</button>
+                </div>
+
+                @if (searchResult != null)
+                {
+                    <div class="alert alert-success py-2 mb-0">Match found: @searchResult</div>
+                }
+                else if (searchAttempted)
+                {
+                    <div class="alert alert-warning py-2 mb-0">No call found with that ID.</div>
+                }
+            </div>
+        </div>
+    </div>
+
+    <!-- Call log view (Iterator traversal) -->
+    <div class="col-md-7">
+        <div class="card">
+            <div class="card-header fw-semibold">All Calls</div>
+            <ul class="list-group list-group-flush">
+                @foreach (var call in AppService.GetAllCalls())
+                {
+                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                        <span>@call</span>
+                        <span class="badge bg-light text-dark border">@call.Status</span>
+                    </li>
+                }
+            </ul>
+        </div>
+    </div>
+</div>
+
+@code {
+    string callerName = "";
+    string phoneNumber = "";
+    string errorMessage = "";
+
+    string searchId = "";
+    Call? searchResult;
+    bool searchAttempted = false;
+
+    void HandleAddCall()
+    {
+        try
+        {
+            AppService.AddCall(callerName, phoneNumber);
+            callerName = "";
+            phoneNumber = "";
+            errorMessage = "";
+        }
+        catch (ArgumentException ex)
+        {
+            errorMessage = ex.Message;
+        }
+    }
+
+    void HandleSearch()
+    {
+        searchAttempted = true;
+        searchResult = int.TryParse(searchId, out int id) ? AppService.FindCall(id) : null;
+    }
+}

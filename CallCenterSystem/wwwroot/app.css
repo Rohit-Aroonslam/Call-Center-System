@@ -1,0 +1,80 @@
+html, body {
+    font-family: 'Segoe UI', Helvetica, Arial, sans-serif;
+}
+
+.page {
+    display: flex;
+    flex-direction: row;
+}
+
+.sidebar {
+    background-color: #1b1f27;
+    width: 220px;
+    min-height: 100vh;
+}
+
+.sidebar .navbar-brand {
+    color: #fff;
+    font-weight: 600;
+    padding: 1rem;
+    display: block;
+}
+
+.sidebar .nav-link {
+    color: #d7d7d7;
+    padding: 0.5rem 0;
+    display: block;
+}
+
+.sidebar .nav-link:hover,
+.sidebar .nav-link.active {
+    color: #fff;
+    font-weight: 600;
+}
+
+.sidebar .navbar-toggler {
+    display: none;
+}
+
+.sidebar-top-row {
+    height: 3.5rem;
+    display: flex;
+    align-items: center;
+    background-color: #12151b;
+    border-bottom: 1px solid #2b2f38;
+}
+
+main {
+    flex: 1;
+}
+
+.top-row {
+    background-color: #f7f7f7;
+    border-bottom: 1px solid #d6d5d5;
+    height: 3.5rem;
+    display: flex;
+    align-items: center;
+}
+
+.content {
+    padding-top: 1.5rem;
+}
+
+#blazor-error-ui {
+    background: lightyellow;
+    bottom: 0;
+    box-shadow: 0 -1px 2px rgba(0, 0, 0, 0.2);
+    display: none;
+    left: 0;
+    padding: 0.6rem 1.25rem 0.7rem 1.25rem;
+    position: fixed;
+    width: 100%;
+    z-index: 1000;
+}
+
+#blazor-error-ui .dismiss {
+    cursor: pointer;
+    position: absolute;
+    right: 0.75rem;
+    top: 0.5rem;
+}

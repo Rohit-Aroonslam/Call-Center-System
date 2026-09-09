@@ -1,0 +1,12 @@
+{
+  "profiles": {
+    "CallCenterSystem": {
+      "commandName": "Project",
+      "launchBrowser": true,
+      "environmentVariables": {
+        "ASPNETCORE_ENVIRONMENT": "Development"
+      },
+      "applicationUrl": "https://localhost:61549;http://localhost:61550"
+    }
+  }
+}
