@@ -4,31 +4,67 @@
 @using CallCenterSystem.Services.State
 @implements IDisposable
 
-<PageTitle>Active Call — Student Support Call Center</PageTitle>
+<PageTitle>Active Call - Student Support Call Center</PageTitle>
 
 <h3 class="mb-3">Active Call</h3>
 <p class="text-muted">
-    Pick a call from the log, then manage it here — on call, on hold, or hung up.
-    Talk time and hold time are tracked separately while the call is open, and the
-    final duration is written back to the call log when it ends.
+    Start a brand-new call, or pick one up from the log to return it. Either way you land
+    here to manage it: on call, on hold, or hung up. Talk time and hold time are tracked
+    separately while the call is open, and the final status and duration are written back
+    to the shared call log the moment the call ends, so the Call Log page always matches
+    what actually happened.
 </p>
 
 <div class="row g-4">
     <div class="col-md-6">
         <div class="card">
-            <div class="card-header fw-semibold">Select a Call</div>
+            <div class="card-header">Start a New Call</div>
             <div class="card-body">
-                <select class="form-select mb-3" @bind="selectedCallId" @bind:after="HandleSelectCall">
+                <p class="text-muted small">
+                    Use this when a student or technician is calling in right now. It logs
+                    the call and opens a live session in one step.
+                </p>
+
+                <div class="mb-3">
+                    <label class="form-label">Caller Name</label>
+                    <input class="form-control" @bind="newCallerName" @bind:event="oninput" />
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Phone Number (10 digits)</label>
+                    <input class="form-control" @bind="newPhoneNumber" @bind:event="oninput" />
+                </div>
+
+                @if (newCallError != "")
+                {
+                    <div class="alert alert-danger py-2">@newCallError</div>
+                }
+
+                <button class="btn btn-primary" @onclick="HandleStartNewCall">Start Call</button>
+            </div>
+        </div>
+
+        <div class="card mt-3">
+            <div class="card-header">Return a Call from the Log</div>
+            <div class="card-body">
+                <label class="form-label">Select a logged call</label>
+                <select class="form-select" @bind="selectedCallId" @bind:after="HandleSelectCall">
                     <option value="0">-- choose a call --</option>
                     @foreach (var call in AppService.GetAllCalls())
                     {
                         <option value="@call.Id">@call</option>
                     }
                 </select>
+            </div>
+        </div>
+    </div>
 
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">Session</div>
+            <div class="card-body">
                 @if (session == null)
                 {
-                    <p class="text-muted mb-0">Select a call above to open a session.</p>
+                    <p class="text-muted mb-0">Start a new call or select one from the log to open a session.</p>
                 }
                 else
                 {
@@ -49,7 +85,7 @@
                     @if (session.CurrentState is HungUpState)
                     {
                         <div class="alert alert-secondary mt-3 mb-0 py-2">
-                            Call ended — duration saved to the call log.
+                            Call ended. Duration saved to the call log.
                         </div>
                     }
                 }
@@ -59,30 +95,58 @@
 </div>
 
 @code {
+    string newCallerName = "";
+    string newPhoneNumber = "";
+    string newCallError = "";
+
     int selectedCallId;
     CallSession? session;
     System.Timers.Timer? ticker;
 
-    void HandleSelectCall()
+    void HandleStartNewCall()
+    {
+        try
+        {
+            var call = AppService.AddCall(newCallerName, newPhoneNumber);
+            newCallerName = "";
+            newPhoneNumber = "";
+            newCallError = "";
+
+            selectedCallId = call.Id;
+            OpenSession(call.Id);
+        }
+        catch (ArgumentException ex)
+        {
+            newCallError = ex.Message;
+        }
+    }
+
+    void HandleSelectCall() => OpenSession(selectedCallId);
+
+    void OpenSession(int callId)
     {
         StopTicker();
 
-        var call = selectedCallId == 0 ? null : AppService.FindCall(selectedCallId);
+        var call = callId == 0 ? null : AppService.FindCall(callId);
         session = call == null ? null : new CallSession(call);
 
         if (session != null)
             StartTicker();
+
+        AppService.NotifyCallsChanged();
     }
 
     void HandleConnect()
     {
         session?.Connect();
+        AppService.NotifyCallsChanged();
         StopTickerIfEnded();
     }
 
     void HandleHold()
     {
         session?.Hold();
+        AppService.NotifyCallsChanged();
         StopTickerIfEnded();
     }
 
@@ -90,6 +154,7 @@
     {
         session?.HangUp();
         StopTicker();
+        AppService.NotifyCallsChanged();
         StateHasChanged();
     }
 
@@ -106,6 +171,7 @@
         ticker.Elapsed += (_, _) => InvokeAsync(() =>
         {
             session?.Tick();
+            AppService.NotifyCallsChanged();
             StateHasChanged();
         });
         ticker.AutoReset = true;

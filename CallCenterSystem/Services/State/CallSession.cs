@@ -6,7 +6,7 @@ namespace CallCenterSystem.Services.State
     // Context
     // Wraps a single Call from the shared call log and manages its live status
     // (On Call / On Hold / Ended) by delegating to the current ICallState.
-    // Deliberately does NOT touch CallLog/CallLogIterator directly — it only
+    // Deliberately does NOT touch CallLog/CallLogIterator directly. It only
     // reads and writes the Call object it was handed, since Call is already a
     // shared reference sitting inside the log.
     public class CallSession
@@ -46,7 +46,7 @@ namespace CallCenterSystem.Services.State
 
         public void AddHoldSecond() => HoldTime = HoldTime.Add(TimeSpan.FromSeconds(1));
 
-        // Called once, by HungUpState, when the call ends — pushes the final
+        // Called once, by HungUpState, when the call ends. Pushes the final
         // recorded duration onto the shared Call so the log/iterator reflect it
         public void SaveFinalDuration() => Call.Duration = TalkTime;
     }

@@ -1,37 +1,61 @@
-<div class="sidebar-top-row ps-3 navbar navbar-dark">
-    <div class="container-fluid">
-        <a class="navbar-brand" href="">Call Center</a>
+<div class="brand">
+    <span class="brand-mark">SC</span>
+    <div class="brand-text">
+        <span class="brand-name">Switchboard</span>
+        <span class="brand-sub">Student Call Center</span>
     </div>
 </div>
 
-<input type="checkbox" title="Navigation menu" class="navbar-toggler" />
+<nav class="nav-list">
+    <NavLink class="nav-link" href="" Match="NavLinkMatch.All">
+        <span class="nav-icon">
+            <svg viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M2 8.5 8 3l6 5.5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" />
+                <path d="M3.5 7.5V13a.5.5 0 0 0 .5.5h3v-4h2v4h3a.5.5 0 0 0 .5-.5V7.5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" />
+            </svg>
+        </span>
+        <span>Home</span>
+    </NavLink>
 
-<div class="nav-scrollable">
-    <nav class="flex-column">
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="" Match="NavLinkMatch.All">
-                Home
-            </NavLink>
-        </div>
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="call-log">
-                Call Log
-            </NavLink>
-        </div>
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="active-call">
-                Active Call
-            </NavLink>
-        </div>
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="departments">
-                Departments
-            </NavLink>
-        </div>
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="call-access">
-                Call Access
-            </NavLink>
-        </div>
-    </nav>
-</div>
+    <NavLink class="nav-link" href="call-log">
+        <span class="nav-icon">
+            <svg viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <rect x="3" y="2" width="10" height="12" rx="1" stroke="currentColor" stroke-width="1.3" />
+                <path d="M5.5 5.5h5M5.5 8h5M5.5 10.5h3" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" />
+            </svg>
+        </span>
+        <span>Call Log</span>
+    </NavLink>
+
+    <NavLink class="nav-link" href="active-call">
+        <span class="nav-icon">
+            <svg viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M3.5 2.5h2l1 3-1.5 1a8 8 0 0 0 4.5 4.5l1-1.5 3 1v2a1 1 0 0 1-1 1c-5.5 0-9.5-4-9.5-9.5a1 1 0 0 1 1-1Z" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round" />
+            </svg>
+        </span>
+        <span>Active Call</span>
+    </NavLink>
+
+    <NavLink class="nav-link" href="departments">
+        <span class="nav-icon">
+            <svg viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <circle cx="4" cy="4" r="1.7" stroke="currentColor" stroke-width="1.2" />
+                <circle cx="12" cy="4" r="1.7" stroke="currentColor" stroke-width="1.2" />
+                <circle cx="8" cy="12.3" r="1.7" stroke="currentColor" stroke-width="1.2" />
+                <path d="M4 5.7V8a1 1 0 0 0 1 1h2M12 5.7V8a1 1 0 0 1-1 1H9" stroke="currentColor" stroke-width="1.2" />
+                <path d="M8 9v1.6" stroke="currentColor" stroke-width="1.2" />
+            </svg>
+        </span>
+        <span>Departments</span>
+    </NavLink>
+
+    <NavLink class="nav-link" href="call-access">
+        <span class="nav-icon">
+            <svg viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <rect x="3.5" y="7" width="9" height="6.5" rx="1" stroke="currentColor" stroke-width="1.3" />
+                <path d="M5.5 7V5a2.5 2.5 0 0 1 5 0v2" stroke="currentColor" stroke-width="1.3" />
+            </svg>
+        </span>
+        <span>Call Access</span>
+    </NavLink>
+</nav>

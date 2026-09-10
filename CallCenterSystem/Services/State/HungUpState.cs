@@ -2,7 +2,7 @@
 
 namespace CallCenterSystem.Services.State
 {
-    // ConcreteState — terminal state. The caller cannot speak and the final
+    // ConcreteState: terminal state. The caller cannot speak and the final
     // duration has already been written back onto the shared Call/log entry.
     public class HungUpState : ICallState
     {
@@ -10,19 +10,19 @@ namespace CallCenterSystem.Services.State
 
         public void Connect(CallSession session)
         {
-            // A call that has ended cannot be reconnected from here — the
+            // A call that has ended cannot be reconnected from here. The
             // manager would place a NEW call from the log (Iterator's job),
             // not resume this session.
         }
 
         public void Hold(CallSession session)
         {
-            // Nothing to hold — the call is already over
+            // Nothing to hold, the call is already over
         }
 
         public void HangUp(CallSession session)
         {
-            // Already ended — nothing to do
+            // Already ended, nothing to do
         }
 
         public void Tick(CallSession session)

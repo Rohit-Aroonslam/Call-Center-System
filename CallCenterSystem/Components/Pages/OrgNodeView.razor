@@ -1,0 +1,131 @@
+@using CallCenterSystem.Interfaces
+@using CallCenterSystem.Services.Composite
+
+@if (IsVisible)
+{
+    @if (HasChildren)
+    {
+        <details class="org-node" open style="margin-left: @(Depth * 1.1)rem;">
+            <summary class="org-row">
+                <span class="org-name">
+                    <span class="org-toggle">
+                        <svg class="chevron" width="10" height="10" viewBox="0 0 10 10" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M2 1L7 5L2 9" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" />
+                        </svg>
+                    </span>
+
+                    <span class="org-icon @(IsDepartment ? "is-department" : "is-staff")">
+                        @if (IsDepartment)
+                        {
+                            <svg width="13" height="13" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                <path d="M1.5 4a1 1 0 0 1 1-1h3.5l1.2 1.8h6.3a1 1 0 0 1 1 1v6.7a1 1 0 0 1-1 1h-11a1 1 0 0 1-1-1V4Z" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round" />
+                            </svg>
+                        }
+                        else
+                        {
+                            <svg width="13" height="13" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                <circle cx="8" cy="5.2" r="2.7" stroke="currentColor" stroke-width="1.3" />
+                                <path d="M2.5 13.5c0-2.9 2.5-5 5.5-5s5.5 2.1 5.5 5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" />
+                            </svg>
+                        }
+                    </span>
+
+                    <span class="org-label">@Node.Name</span>
+
+                    @if (!IsDepartment)
+                    {
+                        <span class="org-role">@Node.Role</span>
+                    }
+                </span>
+
+                <span class="org-count">@Node.GetStaffCount() staff, @Node.GetTotalCalls() calls</span>
+            </summary>
+
+            @if (IsDepartment)
+            {
+                @foreach (var child in ((Department)Node).Children)
+                {
+                    <OrgNodeView Node="child" Depth="Depth + 1" FilterText="FilterText" />
+                }
+            }
+            else
+            {
+                <ul class="org-calls" style="margin-left: @((Depth + 1) * 1.1)rem;">
+                    @foreach (var call in Node.GetCalls())
+                    {
+                        <li class="org-call-row">
+                            <span>Call #@call.Id, @call.PhoneNumber</span>
+                            <span class="org-role">@call.Status, @call.Duration.ToString(@"mm\:ss")</span>
+                        </li>
+                    }
+                </ul>
+            }
+        </details>
+    }
+    else
+    {
+        <div class="org-node" style="margin-left: @(Depth * 1.1)rem;">
+            <div class="org-row org-row-static">
+                <span class="org-name">
+                    <span class="org-toggle"></span>
+
+                    <span class="org-icon @(IsDepartment ? "is-department" : "is-staff")">
+                        @if (IsDepartment)
+                        {
+                            <svg width="13" height="13" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                <path d="M1.5 4a1 1 0 0 1 1-1h3.5l1.2 1.8h6.3a1 1 0 0 1 1 1v6.7a1 1 0 0 1-1 1h-11a1 1 0 0 1-1-1V4Z" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round" />
+                            </svg>
+                        }
+                        else
+                        {
+                            <svg width="13" height="13" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                <circle cx="8" cy="5.2" r="2.7" stroke="currentColor" stroke-width="1.3" />
+                                <path d="M2.5 13.5c0-2.9 2.5-5 5.5-5s5.5 2.1 5.5 5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" />
+                            </svg>
+                        }
+                    </span>
+
+                    <span class="org-label">@Node.Name</span>
+
+                    @if (!IsDepartment)
+                    {
+                        <span class="org-role">@Node.Role</span>
+                    }
+                </span>
+
+                <span class="org-count">@Node.GetStaffCount() staff, @Node.GetTotalCalls() calls</span>
+            </div>
+        </div>
+    }
+}
+
+@code {
+    [Parameter] public IOrgComponent Node { get; set; } = default!;
+    [Parameter] public int Depth { get; set; }
+    [Parameter] public string? FilterText { get; set; }
+
+    bool IsDepartment => Node is Department;
+
+    // A department is expandable once it has at least one child; a staff
+    // member is expandable once they have at least one call. Nothing here
+    // depends on state we track ourselves, only on the live data, so a
+    // freshly added staff member is expandable (and visible) the moment
+    // it exists, and open/closed is handled natively by the browser's
+    // own <details> element rather than by Blazor component state.
+    bool HasChildren => IsDepartment
+        ? ((Department)Node).Children.Count > 0
+        : Node.GetTotalCalls() > 0;
+
+    bool IsVisible => string.IsNullOrWhiteSpace(FilterText) || Matches(Node, FilterText!);
+
+    static bool Matches(IOrgComponent node, string filter)
+    {
+        if (node.Name.Contains(filter, StringComparison.OrdinalIgnoreCase))
+            return true;
+
+        if (node is Department department)
+            return department.Children.Any(child => Matches(child, filter));
+
+        return false;
+    }
+}

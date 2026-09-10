@@ -1,18 +1,26 @@
 @page "/call-log"
 @rendermode InteractiveServer
 @inject CallCenterAppService AppService
+@implements IDisposable
 
-<PageTitle>Call Log — Student Support Call Center</PageTitle>
+<PageTitle>Call Log - Student Support Call Center</PageTitle>
 
 <h3 class="mb-4">Call Log</h3>
-<p class="text-muted">Browse and search through logged calls, or record a new one.</p>
+<p class="text-muted">
+    Browse and search through logged calls, or record a new one. This updates live: a call
+    started or ended on the Active Call page shows up here right away.
+</p>
 
 <div class="row g-4">
     <!-- Log a new call -->
     <div class="col-md-5">
         <div class="card">
-            <div class="card-header fw-semibold">Log a New Call</div>
+            <div class="card-header">Log a New Call</div>
             <div class="card-body">
+                <p class="text-muted small">
+                    Use this to pre-register a call for later, for example a message to
+                    return. To handle a call happening right now, use Active Call instead.
+                </p>
                 <div class="mb-3">
                     <label class="form-label">Caller Name</label>
                     <input class="form-control" @bind="callerName" @bind:event="oninput" />
@@ -33,7 +41,7 @@
 
         <!-- Search / return-call lookup -->
         <div class="card mt-3">
-            <div class="card-header fw-semibold">Search for a Call</div>
+            <div class="card-header">Search for a Call</div>
             <div class="card-body">
                 <div class="input-group mb-2">
                     <input class="form-control" placeholder="Call ID" @bind="searchId" @bind:event="oninput" />
@@ -55,13 +63,20 @@
     <!-- Call log view (Iterator traversal) -->
     <div class="col-md-7">
         <div class="card">
-            <div class="card-header fw-semibold">All Calls</div>
+            <div class="card-header">All Calls</div>
             <ul class="list-group list-group-flush">
                 @foreach (var call in AppService.GetAllCalls())
                 {
                     <li class="list-group-item d-flex justify-content-between align-items-center">
-                        <span>@call</span>
-                        <span class="badge bg-light text-dark border">@call.Status</span>
+                        <span>
+                            <span class="org-role">#@call.Id</span>
+                            @call.CallerName
+                            <span class="org-role">(@call.PhoneNumber)</span>
+                        </span>
+                        <span class="d-flex align-items-center gap-2">
+                            <span class="org-count">@call.Duration.ToString(@"mm\:ss")</span>
+                            <span class="badge @StatusBadgeClass(call.Status)">@call.Status</span>
+                        </span>
                     </li>
                 }
             </ul>
@@ -77,6 +92,13 @@
     string searchId = "";
     Call? searchResult;
     bool searchAttempted = false;
+
+    protected override void OnInitialized()
+    {
+        AppService.StateChanged += HandleChanged;
+    }
+
+    void HandleChanged() => InvokeAsync(StateHasChanged);
 
     void HandleAddCall()
     {
@@ -98,4 +120,13 @@
         searchAttempted = true;
         searchResult = int.TryParse(searchId, out int id) ? AppService.FindCall(id) : null;
     }
+
+    string StatusBadgeClass(string status) => status switch
+    {
+        "On Call" => "bg-success",
+        "On Hold" => "bg-warning text-dark",
+        _ => "bg-secondary"
+    };
+
+    public void Dispose() => AppService.StateChanged -= HandleChanged;
 }

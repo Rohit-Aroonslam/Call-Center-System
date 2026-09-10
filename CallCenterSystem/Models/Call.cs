@@ -19,6 +19,6 @@ namespace CallCenterSystem.Models
         }
 
         public override string ToString() =>
-            $"[{Id}] {CallerName} ({PhoneNumber}) - {Status}";
+            $"[{Id}] {CallerName} ({PhoneNumber}) - {Status} - {Duration:mm\\:ss}";
     }
 }

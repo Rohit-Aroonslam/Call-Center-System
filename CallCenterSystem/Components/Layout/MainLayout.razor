@@ -1,13 +1,14 @@
 @inherits LayoutComponentBase
 
 <div class="page">
-    <div class="sidebar">
+    <aside class="sidebar">
         <NavMenu />
-    </div>
+    </aside>
 
     <main>
-        <div class="top-row px-4">
-            <span class="fw-semibold">Student Support Call Center</span>
+        <div class="status-strip px-4">
+            <span class="status-dot"></span>
+            <span>All lines operational</span>
         </div>
 
         <article class="content px-4">
@@ -17,7 +18,11 @@
 </div>
 
 <div id="blazor-error-ui">
-    An unhandled error has occurred.
+    <span>An unhandled error has occurred.</span>
     <a href="" class="reload">Reload</a>
-    <a class="dismiss">🗙</a>
+    <a class="dismiss" aria-label="Dismiss">
+        <svg width="13" height="13" viewBox="0 0 13 13" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M1 1L12 12M12 1L1 12" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" />
+        </svg>
+    </a>
 </div>
