@@ -1,10 +1,129 @@
 @page "/active-call"
+@rendermode InteractiveServer
+@inject CallCenterAppService AppService
+@using CallCenterSystem.Services.State
+@implements IDisposable
 
 <PageTitle>Active Call — Student Support Call Center</PageTitle>
 
 <h3 class="mb-3">Active Call</h3>
 <p class="text-muted">
-    This page will let a technician or student manage a call in progress — on call, on hold,
-    or hung up.
+    Pick a call from the log, then manage it here — on call, on hold, or hung up.
+    Talk time and hold time are tracked separately while the call is open, and the
+    final duration is written back to the call log when it ends.
 </p>
-<div class="alert alert-secondary">Coming soon.</div>
+
+<div class="row g-4">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header fw-semibold">Select a Call</div>
+            <div class="card-body">
+                <select class="form-select mb-3" @bind="selectedCallId" @bind:after="HandleSelectCall">
+                    <option value="0">-- choose a call --</option>
+                    @foreach (var call in AppService.GetAllCalls())
+                    {
+                        <option value="@call.Id">@call</option>
+                    }
+                </select>
+
+                @if (session == null)
+                {
+                    <p class="text-muted mb-0">Select a call above to open a session.</p>
+                }
+                else
+                {
+                    <p class="mb-1"><strong>Caller:</strong> @session.Call.CallerName</p>
+                    <p class="mb-1">
+                        <strong>State:</strong>
+                        <span class="badge @StateBadgeClass(session.CurrentState.Name)">@session.CurrentState.Name</span>
+                    </p>
+                    <p class="mb-1"><strong>Talk time:</strong> @session.TalkTime.ToString(@"mm\:ss")</p>
+                    <p class="mb-3"><strong>Hold time:</strong> @session.HoldTime.ToString(@"mm\:ss")</p>
+
+                    <div class="btn-group">
+                        <button class="btn btn-success" disabled="@(session.CurrentState is HungUpState)" @onclick="HandleConnect">On Call</button>
+                        <button class="btn btn-warning" disabled="@(session.CurrentState is HungUpState)" @onclick="HandleHold">Hold</button>
+                        <button class="btn btn-danger" disabled="@(session.CurrentState is HungUpState)" @onclick="HandleHangUp">Hang Up</button>
+                    </div>
+
+                    @if (session.CurrentState is HungUpState)
+                    {
+                        <div class="alert alert-secondary mt-3 mb-0 py-2">
+                            Call ended — duration saved to the call log.
+                        </div>
+                    }
+                }
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    int selectedCallId;
+    CallSession? session;
+    System.Timers.Timer? ticker;
+
+    void HandleSelectCall()
+    {
+        StopTicker();
+
+        var call = selectedCallId == 0 ? null : AppService.FindCall(selectedCallId);
+        session = call == null ? null : new CallSession(call);
+
+        if (session != null)
+            StartTicker();
+    }
+
+    void HandleConnect()
+    {
+        session?.Connect();
+        StopTickerIfEnded();
+    }
+
+    void HandleHold()
+    {
+        session?.Hold();
+        StopTickerIfEnded();
+    }
+
+    void HandleHangUp()
+    {
+        session?.HangUp();
+        StopTicker();
+        StateHasChanged();
+    }
+
+    string StateBadgeClass(string stateName) => stateName switch
+    {
+        "On Call" => "bg-success",
+        "On Hold" => "bg-warning text-dark",
+        _ => "bg-secondary"
+    };
+
+    void StartTicker()
+    {
+        ticker = new System.Timers.Timer(1000);
+        ticker.Elapsed += (_, _) => InvokeAsync(() =>
+        {
+            session?.Tick();
+            StateHasChanged();
+        });
+        ticker.AutoReset = true;
+        ticker.Start();
+    }
+
+    void StopTickerIfEnded()
+    {
+        if (session?.CurrentState is HungUpState)
+            StopTicker();
+    }
+
+    void StopTicker()
+    {
+        ticker?.Stop();
+        ticker?.Dispose();
+        ticker = null;
+    }
+
+    public void Dispose() => StopTicker();
+}
