@@ -1,0 +1,110 @@
+﻿@page "/login"
+@rendermode InteractiveServer
+@using CallCenterSystem.Services.Proxy
+@inject ISessionContext Session
+@inject NavigationManager Nav
+
+<PageTitle>Sign In — Student Support Call Center</PageTitle>
+
+<h3 class="mb-3">Sign In</h3>
+<p class="text-muted">
+    The call center identifies you by role. What you are allowed to do with the
+    call log is decided by the Proxy, not by this page.
+</p>
+
+@if (Session.IsAuthenticated)
+{
+    var user = Session.CurrentUser!;
+
+    <div class="alert alert-success">
+        Signed in as <strong>@user.DisplayName</strong>
+        <span class="badge bg-dark ms-2">@user.Role</span>
+    </div>
+
+    <button class="btn btn-outline-secondary me-2" @onclick="SignOut">Sign Out</button>
+    <button class="btn btn-primary" @onclick="@(() => Nav.NavigateTo("call-access"))">
+        Go to Call Access
+    </button>
+}
+else
+{
+    <div class="row g-3" style="max-width: 460px;">
+        <div class="col-12">
+            <label class="form-label">Username</label>
+            <input class="form-control" @bind="_username" @bind:event="oninput" />
+        </div>
+        <div class="col-12">
+            <label class="form-label">Password</label>
+            <input class="form-control" type="password" @bind="_password" @bind:event="oninput" />
+        </div>
+        <div class="col-12">
+            <button class="btn btn-primary" @onclick="SignIn">Sign In</button>
+        </div>
+    </div>
+
+    @if (_error is not null)
+    {
+        <div class="alert alert-danger mt-3">@_error</div>
+    }
+
+    <hr class="my-4" />
+
+    <h6 class="text-muted">Demo accounts</h6>
+    <table class="table table-sm align-middle" style="max-width: 620px;">
+        <thead>
+            <tr><th>Name</th><th>Role</th><th>Username</th><th>Password</th><th></th></tr>
+        </thead>
+        <tbody>
+            @foreach (var u in Session.AvailableUsers)
+            {
+                <tr>
+                    <td>@u.DisplayName</td>
+                    <td><span class="badge bg-secondary">@u.Role</span></td>
+                    <td><code>@u.Username</code></td>
+                    <td><code>@u.Password</code></td>
+                    <td class="text-end">
+                        <button class="btn btn-sm btn-outline-primary"
+                                @onclick="@(() => QuickSignIn(u.Username, u.Password))">
+                            Use
+                        </button>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@code {
+    private string _username = "";
+    private string _password = "";
+    private string? _error;
+
+    private void SignIn()
+    {
+        if (Session.SignIn(_username, _password))
+        {
+            _error = null;
+            _password = "";
+            Nav.NavigateTo("call-access");
+        }
+        else
+        {
+            _error = "Unrecognised username or password.";
+        }
+    }
+
+    private void QuickSignIn(string username, string password)
+    {
+        _username = username;
+        _password = password;
+        SignIn();
+    }
+
+    private void SignOut()
+    {
+        Session.SignOut();
+        _username = "";
+        _password = "";
+        _error = null;
+    }
+}

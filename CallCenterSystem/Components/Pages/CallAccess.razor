@@ -1,9 +1,219 @@
 @page "/call-access"
+@rendermode InteractiveServer
+@using CallCenterSystem.Services.Proxy
+@using CallCenterSystem.Services.State
+@inject ISessionContext Session
+@inject ICallCenterService Service
+@inject AccessAuditLog Audit
+@inject NavigationManager Nav
 
 <PageTitle>Call Access — Student Support Call Center</PageTitle>
 
-<h3 class="mb-3">Call Access</h3>
+<h3 class="mb-1">Call Access</h3>
 <p class="text-muted">
-    This page will control who is allowed to place or return a call from the log.
+    Every request below goes through <code>CallCenterServiceProxy</code>. This page
+    never checks a role itself — it calls the service and reports what came back.
 </p>
-<div class="alert alert-secondary">Coming soon.</div>
+
+@if (!Session.IsAuthenticated)
+{
+    <div class="alert alert-warning">
+        Not signed in.
+        <a href="login" class="alert-link">Sign in</a> to see what your role permits.
+    </div>
+}
+else
+{
+    var user = Session.CurrentUser!;
+
+    <div class="alert alert-secondary d-flex justify-content-between align-items-center">
+        <div>
+            Acting as <strong>@user.DisplayName</strong>
+            <span class="badge bg-dark ms-2">@user.Role</span>
+        </div>
+        <a href="login" class="btn btn-sm btn-outline-secondary">Switch user</a>
+    </div>
+}
+
+<!-- ── Permission matrix ─────────────────────────────────────────── -->
+<h5 class="mt-4">Permission matrix</h5>
+<p class="text-muted small">
+    Read from <code>Permissions</code>. Adding a role is a new row here, not an
+    edit to the Proxy.
+</p>
+
+<table class="table table-sm table-bordered align-middle" style="max-width: 620px;">
+    <thead>
+        <tr>
+            <th>Operation</th>
+            @foreach (var role in Permissions.AllRoles())
+            {
+                var isCurrent = Session.CurrentUser?.Role == role;
+                <th class="text-center @(isCurrent ? "table-primary" : "")">@role</th>
+            }
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var op in Permissions.AllOperations())
+        {
+            <tr>
+                <td>@op</td>
+                @foreach (var role in Permissions.AllRoles())
+                {
+                    var isCurrent = Session.CurrentUser?.Role == role;
+                    var allowed = Permissions.IsAllowed(role, op);
+                    <td class="text-center @(isCurrent ? "table-primary" : "")">
+                        @if (allowed)
+                        {
+                            <span class="text-success fw-bold">&#10003;</span>
+                        }
+                        else
+                        {
+                            <span class="text-danger fw-bold">&#10007;</span>
+                        }
+                    </td>
+                }
+            </tr>
+        }
+    </tbody>
+</table>
+
+<!-- ── Live checks ───────────────────────────────────────────────── -->
+<h5 class="mt-4">Try it</h5>
+
+<div class="row g-3 align-items-end" style="max-width: 720px;">
+    <div class="col-auto">
+        <button class="btn btn-outline-primary" @onclick="BrowseLog">
+            Browse call log
+        </button>
+    </div>
+    <div class="col-auto">
+        <label class="form-label mb-1 small text-muted">Call ID</label>
+        <input class="form-control" type="number" style="width: 110px;" @bind="_callId" />
+    </div>
+    <div class="col-auto">
+        <button class="btn btn-primary" @onclick="ReturnCall">
+            Return this call
+        </button>
+    </div>
+</div>
+
+@if (_message is not null)
+{
+    <div class="alert @(_denied ? "alert-danger" : "alert-success") mt-3">@_message</div>
+}
+
+@if (_visibleCalls is not null)
+{
+    <p class="text-muted small mt-3 mb-1">
+        The proxy returned @_visibleCalls.Count call(s) for this role.
+    </p>
+    <table class="table table-sm" style="max-width: 620px;">
+        <thead>
+            <tr><th>ID</th><th>Caller</th><th>Number</th><th>Status</th><th>Duration</th></tr>
+        </thead>
+        <tbody>
+            @foreach (var c in _visibleCalls)
+            {
+                <tr>
+                    <td>@c.Id</td>
+                    <td>@c.CallerName</td>
+                    <td>@c.PhoneNumber</td>
+                    <td>@c.Status</td>
+                    <td>@c.Duration.ToString(@"mm\:ss")</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+<!-- ── Audit trail ───────────────────────────────────────────────── -->
+<div class="d-flex justify-content-between align-items-center mt-4">
+    <h5 class="mb-0">Access audit trail</h5>
+    <button class="btn btn-sm btn-outline-secondary" @onclick="ClearAudit">Clear</button>
+</div>
+<p class="text-muted small">
+    Written by the Proxy on every guarded call — this is the logging
+    responsibility layered on top of protection.
+</p>
+
+@if (!Audit.Attempts.Any())
+{
+    <div class="alert alert-light border">No access attempts recorded yet.</div>
+}
+else
+{
+    <table class="table table-sm table-striped">
+        <thead>
+            <tr><th>Time</th><th>User</th><th>Role</th><th>Operation</th><th>Result</th><th>Detail</th></tr>
+        </thead>
+        <tbody>
+            @foreach (var a in Audit.Attempts)
+            {
+                <tr>
+                    <td>@a.Timestamp.ToString("HH:mm:ss")</td>
+                    <td>@a.Username</td>
+                    <td>@(a.Role?.ToString() ?? "—")</td>
+                    <td>@a.Operation</td>
+                    <td>
+                        @if (a.Allowed)
+                        {
+                            <span class="badge bg-success">Allowed</span>
+                        }
+                        else
+                        {
+                            <span class="badge bg-danger">Denied</span>
+                        }
+                    </td>
+                    <td class="text-muted small">@a.Detail</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@code {
+    private int _callId = 1;
+    private string? _message;
+    private bool _denied;
+    private List<Call>? _visibleCalls;
+
+    // Loaded on demand into a field, never called from the render body —
+    // otherwise every re-render would write another audit row.
+    private void BrowseLog()
+    {
+        _visibleCalls = Service.GetAllCalls();
+        _denied = false;
+        _message = _visibleCalls.Count == 0
+            ? "The proxy returned no calls. Your role has no read access to the log."
+            : null;
+    }
+
+    private void ReturnCall()
+    {
+        try
+        {
+            CallSession session = Service.ReturnCall(_callId);
+            _denied = false;
+            _message = $"Call {session.Call.Id} to {session.Call.CallerName} returned. " +
+                       $"Session opened in state '{session.CurrentState.Name}'.";
+        }
+        catch (AccessDeniedException ex)
+        {
+            _denied = true;
+            _message = ex.Message;
+        }
+        catch (ArgumentException ex)
+        {
+            _denied = true;
+            _message = ex.Message;
+        }
+    }
+
+    private void ClearAudit()
+    {
+        Audit.Clear();
+        _message = null;
+        _visibleCalls = null;
+    }
+}

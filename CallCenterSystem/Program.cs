@@ -1,5 +1,7 @@
 using CallCenterSystem.Components;
+using CallCenterSystem.Interfaces;
 using CallCenterSystem.Services;
+using CallCenterSystem.Services.Proxy;
 
 namespace CallCenterSystem
 {
@@ -14,6 +16,14 @@ namespace CallCenterSystem
                 .AddInteractiveServerComponents();
 
             builder.Services.AddSingleton<CallCenterAppService>();
+            // --- Proxy pattern (Bantu) ---
+            builder.Services.AddSingleton<AccessAuditLog>();
+            builder.Services.AddSingleton<ISessionContext, SessionContext>();
+            builder.Services.AddSingleton<ICallCenterService>(sp =>
+                new CallCenterServiceProxy(
+                    new CallCenterServiceAdapter(sp.GetRequiredService<CallCenterAppService>()),
+                    sp.GetRequiredService<ISessionContext>(),
+                    sp.GetRequiredService<AccessAuditLog>()));
 
             var app = builder.Build();
 

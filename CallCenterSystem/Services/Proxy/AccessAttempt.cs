@@ -9,7 +9,7 @@ namespace CallCenterSystem.Services.Proxy
         string Username,
         UserRole? Role,
         CallCenterOperation Operation,
-        bool Alllowed,
+        bool Allowed,
         string Detail
     );
 }

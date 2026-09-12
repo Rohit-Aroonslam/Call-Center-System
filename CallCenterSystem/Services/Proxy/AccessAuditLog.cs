@@ -19,7 +19,7 @@
             Changed?.Invoke();
         }
 
-        public void clear()
+        public void Clear()
         {
             _attempts.Clear();
             Changed?.Invoke();

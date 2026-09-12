@@ -30,7 +30,7 @@ namespace CallCenterSystem.Services
             AddCall("Rohit Aroonslam", "0712885274");
             AddCall("Amity Brown", "0824698738");
             AddCall("Marcellos Naidoo", "0835512290");
-            AddCall("Bantu Khumalo", "0719944531");
+            AddCall("John Khumalo", "0719944531");
 
             _organization = BuildOrganization();
         }
