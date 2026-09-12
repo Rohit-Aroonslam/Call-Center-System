@@ -2,5 +2,9 @@
 {
     public class HelloWordldClass
     {
+        private void Method()
+        {
+            Console.WriteLine("Hello World");
+        }
     }
 }
