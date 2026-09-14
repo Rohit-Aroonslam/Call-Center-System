@@ -35,9 +35,9 @@ namespace CallCenterSystem.Services.Composite
 
         public int GetTotalCalls() => GetCalls().Count();
 
-        public IEnumerable<OrgNode> Flatten(int depth = 0)
+        public IEnumerable<OrgNode> Flatten(int depth = 0, IOrgComponent? parent = null)
         {
-            yield return new OrgNode(depth, Name, Role, GetStaffCount(), GetTotalCalls(), this);
+            yield return new OrgNode(depth, Name, Role, GetStaffCount(), GetTotalCalls(), this, parent);
         }
     }
 }
