@@ -1,121 +1,193 @@
 @page "/departments"
 @rendermode InteractiveServer
+@inject ICallCenterService Service
+@inject ISessionContext Session
 @inject CallCenterAppService AppService
 @using CallCenterSystem.Interfaces
+@using CallCenterSystem.Services.Composite
+@using CallCenterSystem.Services.Proxy
 @implements IDisposable
 
-<PageTitle>Departments - Student Support Call Center</PageTitle>
+<PageTitle>Department Management - Student Support Call Center</PageTitle>
 
-<h3 class="mb-3">Departments</h3>
-<p class="text-muted">
-    Staff are organised into departments and teams using the Composite pattern. A department
-    can hold individual staff members, or other sub-departments, and every total rolls up
-    automatically. Click a department row to expand or collapse it; click a staff row that has
-    calls to list them underneath.
-</p>
+<div class="dept-mgmt-header">
+    <div class="dept-mgmt-header-text">
+        <h3>Department Management</h3>
+        <p class="text-muted mb-0">
+            View and manage staff across departments, built on the Composite pattern
+            (<code>IOrgComponent</code>). Filter by department, search by name, and expand a
+            row to see full call history. Adding or removing staff goes through the same
+            access-controlled Proxy used on the Call Access page.
+        </p>
+    </div>
 
-<div class="row g-4">
-    <div class="col-md-7">
-        <div class="card">
-            <div class="card-header">Organization tree</div>
-            <div class="card-body pt-3">
-                <input class="form-control mb-3" placeholder="Filter by name..." @bind="filterText" @bind:event="oninput" />
+    @if (canView && canManage)
+    {
+        <div class="dept-mgmt-header-actions">
+            <button type="button" class="btn btn-primary" @onclick="OpenAddStaffModal">Add Staff</button>
+            <button type="button" class="btn btn-outline-secondary" @onclick="OpenAddDepartmentModal">Add Department</button>
+        </div>
+    }
+</div>
 
-                @{
-                    var rows = VisibleRows();
-                }
+@if (!canView)
+{
+    <div class="alert alert-warning">
+        @if (Session.CurrentUser is null)
+        {
+            <span>You need to sign in to view the organization.</span>
+            <a href="login" class="alert-link">Sign in</a>
+        }
+        else
+        {
+            <span>@(Session.CurrentUser?.Role) accounts cannot view the organization. Technicians and Managers can.</span>
+        }
+    </div>
+}
+else
+{
+    @if (!canManage)
+    {
+        <p><span class="status-pill">View only</span></p>
+    }
 
-                @if (rows.Count == 0)
-                {
-                    <p class="text-muted small mb-0">No matches.</p>
-                }
-                else
-                {
-                    <div class="org-tree-wrap">
-                        @foreach (var node in rows)
-                        {
-                            bool isDepartment = node.Role == "Department";
-                            bool hasCalls = !isDepartment && node.TotalCalls > 0;
-                            bool isToggleable = isDepartment || hasCalls;
-                            bool isOpen = isDepartment
-                                ? !collapsedDepartments.Contains(node.Name)
-                                : expandedStaff.Contains(node.Source);
+    @if (removeError != "")
+    {
+        <div class="alert alert-danger py-2">@removeError</div>
+    }
 
-                            <div class="org-node" style="margin-left: @(node.Depth * 1.1)rem;">
-                                <div class="org-row @(isToggleable ? "" : "org-row-static")"
-                                     @onclick="() => HandleRowClick(node, isDepartment, hasCalls)">
-                                    <span class="org-name">
-                                        <span class="org-toggle">
-                                            @if (isToggleable)
-                                            {
-                                                <svg class="chevron @(isOpen ? "is-open" : "")" width="10" height="10" viewBox="0 0 10 10" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                                    <path d="M2 1L7 5L2 9" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" />
-                                                </svg>
-                                            }
-                                        </span>
+    <div class="dept-tabs">
+        <button type="button" class="dept-tab @(selectedDepartmentFilter == null ? "is-active" : "")"
+                @onclick="() => SelectDepartmentFilter(null)">
+            All (@AllStaffEntries().Count)
+        </button>
+        @foreach (var department in departments)
+        {
+            <button type="button" class="dept-tab @(selectedDepartmentFilter == department.Name ? "is-active" : "")"
+                    @onclick="() => SelectDepartmentFilter(department.Name)">
+                @department.Name (@DirectStaffCount(department))
+            </button>
+        }
+    </div>
 
-                                        <span class="org-icon @(isDepartment ? "is-department" : "is-staff")">
-                                            @if (isDepartment)
-                                            {
-                                                <svg width="13" height="13" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                                    <path d="M1.5 4a1 1 0 0 1 1-1h3.5l1.2 1.8h6.3a1 1 0 0 1 1 1v6.7a1 1 0 0 1-1 1h-11a1 1 0 0 1-1-1V4Z" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round" />
-                                                </svg>
-                                            }
-                                            else
-                                            {
-                                                <svg width="13" height="13" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                                    <circle cx="8" cy="5.2" r="2.7" stroke="currentColor" stroke-width="1.3" />
-                                                    <path d="M2.5 13.5c0-2.9 2.5-5 5.5-5s5.5 2.1 5.5 5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" />
-                                                </svg>
-                                            }
-                                        </span>
+    <input class="form-control dept-search" placeholder="Search by name..." @bind="filterText" @bind:event="oninput" />
+    static int DirectStaffCount(Department department) =>
+    department.Children.Count(c => c is StaffMember);
+    @if (VisibleStaff().Count == 0)
+    {
+        <p class="text-muted small">No matching staff.</p>
+    }
+    else
+    {
+        <div class="dept-table-wrap">
+            <table class="dept-table">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Name</th>
+                        <th>Role</th>
+                        <th>Department</th>
+                        <th>Status</th>
+                        <th>Calls</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var entry in VisibleStaff())
+                    {
+                        var staff = entry.Staff;
+                        var department = entry.Department;
+                        bool hasCalls = staff.GetTotalCalls() > 0;
+                        bool isOpen = expandedStaff.Contains(staff);
+                        string availability = StaffAvailability(staff);
 
-                                        <span class="org-label">@node.Name</span>
-
-                                        @if (!isDepartment)
+                        <tr class="dept-row @(hasCalls ? "" : "dept-row-static")"
+                            @onclick="() => HandleToggleStaff(staff, hasCalls)">
+                            <td>@StaffCode(department, staff)</td>
+                            <td>
+                                <span class="dept-row-name">
+                                    <span class="org-toggle">
+                                        @if (hasCalls)
                                         {
-                                            <span class="org-role">@node.Role</span>
+                                            <svg class="chevron @(isOpen ? "is-open" : "")" width="10" height="10" viewBox="0 0 10 10" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                                <path d="M2 1L7 5L2 9" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" />
+                                            </svg>
                                         }
                                     </span>
-
-                                    <span class="org-count">@node.StaffCount staff, @node.TotalCalls calls</span>
-                                </div>
-
-                                @if (!isDepartment && hasCalls && isOpen)
+                                    @staff.Name
+                                </span>
+                            </td>
+                            <td><span class="role-pill">@staff.Role</span></td>
+                            <td>@department.Name</td>
+                            <td><span class="badge @AvailabilityBadgeClass(availability)">@availability</span></td>
+                            <td>@staff.GetTotalCalls()</td>
+                            <td class="text-end">
+                                @if (canManage)
                                 {
-                                    <ul class="org-calls" style="margin-left: @((node.Depth + 1) * 1.1)rem;">
-                                        @foreach (var call in node.Source.GetCalls())
+                                    <button type="button" class="org-remove-link" @onclick:stopPropagation @onclick="() => HandleRemove(department, staff)">
+                                        Remove
+                                    </button>
+                                }
+                            </td>
+                        </tr>
+
+                        @if (hasCalls && isOpen)
+                        {
+                            <tr class="dept-detail-row">
+                                <td colspan="7">
+                                    <div class="org-call-summary">
+                                        Average call length @AverageDuration(staff).ToString(@"mm\:ss")
+                                    </div>
+                                    <ul class="org-calls">
+                                        @foreach (var call in staff.GetCalls().OrderByDescending(c => c.LoggedAt))
                                         {
-                                            <li class="org-call-row">
-                                                <span>Call #@call.Id, @call.PhoneNumber</span>
-                                                <span class="org-role">@call.Status, @call.Duration.ToString(@"mm\:ss")</span>
+                                            <li class="org-call-row @StatusAccentClass(call.Status)">
+                                                <div class="org-call-top">
+                                                    <span class="org-call-id">Call #@call.Id, @call.LoggedAt.ToString("dd MMM, HH:mm")</span>
+                                                    <span class="badge @StatusBadgeClass(call.Status)">@call.Status</span>
+                                                </div>
+                                                <div class="org-call-meta">
+                                                    <span>Caller number @call.PhoneNumber</span>
+                                                    <span>Talk @call.TalkTime.ToString(@"mm\:ss")</span>
+                                                    @if (call.HoldTime > TimeSpan.Zero)
+                                                    {
+                                                        <span>Hold @call.HoldTime.ToString(@"mm\:ss")</span>
+                                                    }
+                                                </div>
                                             </li>
                                         }
                                     </ul>
-                                }
-                            </div>
+                                </td>
+                            </tr>
                         }
-                    </div>
-                }
-            </div>
+                    }
+                </tbody>
+            </table>
         </div>
-    </div>
+    }
+}
 
-    <div class="col-md-5">
-        <div class="card">
-            <div class="card-header">Add a Staff Member</div>
-            <div class="card-body">
+@if (showAddStaffModal)
+{
+    <div class="modal-backdrop-custom" @onclick="CloseAddStaffModal">
+        <div class="modal-dialog-custom" @onclick:stopPropagation>
+            <div class="modal-dialog-header">
+                <h5>Add a Staff Member</h5>
+                <button type="button" class="modal-close-btn" @onclick="CloseAddStaffModal" aria-label="Close">
+                    <svg width="14" height="14" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M1 1L13 13M13 1L1 13" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" />
+                    </svg>
+                </button>
+            </div>
+            <div class="modal-dialog-body">
                 <div class="mb-3">
                     <label class="form-label">Department</label>
                     <select class="form-select" @bind="selectedDepartment">
-                        @foreach (var department in AppService.GetDepartments())
+                        @foreach (var department in departments)
                         {
                             <option value="@department.Name">@department.Name</option>
                         }
                     </select>
-                    <div class="form-hint">
-                        Currently @currentDepartmentStaffCount staff in this department.
-                    </div>
                 </div>
                 <div class="mb-3">
                     <label class="form-label">Name</label>
@@ -126,101 +198,279 @@
                     <input class="form-control" placeholder="e.g. Technician" @bind="newStaffRole" @bind:event="oninput" />
                 </div>
 
-                @if (formError != "")
+                @if (staffFormError != "")
                 {
-                    <div class="alert alert-danger py-2">@formError</div>
+                    <div class="alert alert-danger py-2">@staffFormError</div>
                 }
-                @if (formSuccess != "")
+                @if (staffFormSuccess != "")
                 {
-                    <div class="alert alert-success py-2">@formSuccess</div>
+                    <div class="alert alert-success py-2">@staffFormSuccess</div>
                 }
 
-                <button class="btn btn-primary" @onclick="HandleAddStaff">Add Staff</button>
+                <button class="btn btn-primary" disabled="@(!CanSubmitStaff)" @onclick="HandleAddStaff">Add Staff</button>
             </div>
         </div>
     </div>
-</div>
+}
+
+@if (showAddDepartmentModal)
+{
+    <div class="modal-backdrop-custom" @onclick="CloseAddDepartmentModal">
+        <div class="modal-dialog-custom" @onclick:stopPropagation>
+            <div class="modal-dialog-header">
+                <h5>Add a Department</h5>
+                <button type="button" class="modal-close-btn" @onclick="CloseAddDepartmentModal" aria-label="Close">
+                    <svg width="14" height="14" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M1 1L13 13M13 1L1 13" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" />
+                    </svg>
+                </button>
+            </div>
+            <div class="modal-dialog-body">
+                <p class="text-muted small">
+                    Nests a new department under an existing one, so you can grow the tree to
+                    any depth and watch the totals roll up automatically.
+                </p>
+                <div class="mb-3">
+                    <label class="form-label">Parent Department</label>
+                    <select class="form-select" @bind="selectedParentDepartment">
+                        @foreach (var department in departments)
+                        {
+                            <option value="@department.Name">@department.Name</option>
+                        }
+                    </select>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">New Department Name</label>
+                    <input class="form-control" @bind="newDepartmentName" @bind:event="oninput" />
+                </div>
+
+                @if (departmentFormError != "")
+                {
+                    <div class="alert alert-danger py-2">@departmentFormError</div>
+                }
+                @if (departmentFormSuccess != "")
+                {
+                    <div class="alert alert-success py-2">@departmentFormSuccess</div>
+                }
+
+                <button class="btn btn-primary" disabled="@(!CanSubmitDepartment)" @onclick="HandleAddDepartment">Add Department</button>
+            </div>
+        </div>
+    </div>
+}
 
 @code {
+    // ---- data loaded once per change, not recomputed inline in markup, so
+    // rendering never triggers an extra Proxy audit row -------------------
+    IOrgComponent? organizationRoot;
+    List<Department> departments = new();
+    bool canView;
+    bool canManage;
+
     string filterText = "";
+    string? selectedDepartmentFilter;
+    readonly HashSet<IOrgComponent> expandedStaff = new();
+
+    bool showAddStaffModal;
+    bool showAddDepartmentModal;
 
     string? selectedDepartment;
     string newStaffName = "";
     string newStaffRole = "";
-    string formError = "";
-    string formSuccess = "";
+    string staffFormError = "";
+    string staffFormSuccess = "";
 
-    // Which departments are collapsed (by name) and which staff have their
-    // call list expanded (by node reference). Both live here, on this one
-    // page, and are changed only by plain @onclick handlers on this same
-    // page, so there is no cross-component wiring that can fall out of sync.
-    readonly HashSet<string> collapsedDepartments = new();
-    readonly HashSet<IOrgComponent> expandedStaff = new();
+    string? selectedParentDepartment;
+    string newDepartmentName = "";
+    string departmentFormError = "";
+    string departmentFormSuccess = "";
+
+    string removeError = "";
 
     protected override void OnInitialized()
     {
-        AppService.StateChanged += HandleChanged;
-        selectedDepartment = AppService.GetDepartments().FirstOrDefault()?.Name;
+        Service.StateChanged += HandleChanged;
+        Session.Changed += HandleChanged;
+        LoadOrganization();
     }
 
-    void HandleChanged() => InvokeAsync(StateHasChanged);
-
-    int currentDepartmentStaffCount =>
-        AppService.GetDepartments()
-            .FirstOrDefault(d => d.Name == selectedDepartment)
-            ?.GetStaffCount() ?? 0;
-
-    // Builds the list of rows to actually draw. While filtering, every
-    // match is shown flat (collapse state is ignored, since you're
-    // searching for something specific). Otherwise the flattened tree is
-    // walked once, skipping anything nested under a collapsed department.
-    List<OrgNode> VisibleRows()
+    void HandleChanged() => InvokeAsync(() =>
     {
-        var all = AppService.GetOrganization().Flatten().ToList();
+        LoadOrganization();
+        StateHasChanged();
+    });
+
+    // Checked against the same Permissions matrix the Proxy itself uses,
+    // so the page can hide controls a user isn't allowed to use instead of
+    // just letting them click something that will be refused.
+    void LoadOrganization()
+    {
+        var role = Session.CurrentUser?.Role;
+        canView = role.HasValue && Permissions.IsAllowed(role.Value, CallCenterOperation.ViewOrganization);
+        canManage = role.HasValue && Permissions.IsAllowed(role.Value, CallCenterOperation.AddStaffMember);
+
+        if (!canView)
+        {
+            organizationRoot = null;
+            departments = new();
+            return;
+        }
+
+        try
+        {
+            organizationRoot = Service.GetOrganization();
+            departments = Service.GetDepartments().ToList();
+
+            selectedDepartment ??= departments.FirstOrDefault()?.Name;
+            selectedParentDepartment ??= departments.FirstOrDefault()?.Name;
+        }
+        catch (AccessDeniedException)
+        {
+            organizationRoot = null;
+            departments = new();
+        }
+    }
+
+    void SelectDepartmentFilter(string? departmentName) => selectedDepartmentFilter = departmentName;
+
+    // Every staff member in the tree, flattened, paired with the department
+    // they belong to directly. Uses the same Flatten() the rest of the
+    // Composite already relies on, so this is just a different view over
+    // the same recursive structure, not a second copy of it.
+    List<(StaffMember Staff, Department Department)> AllStaffEntries()
+    {
+        if (organizationRoot is null)
+            return new();
+
+        return organizationRoot.Flatten()
+            .Where(n => n.Role != "Department")
+            .Select(n => ((StaffMember)n.Source, (Department)n.Parent!))
+            .ToList();
+    }
+
+    List<(StaffMember Staff, Department Department)> VisibleStaff()
+    {
+        var all = AllStaffEntries();
+
+        if (!string.IsNullOrWhiteSpace(selectedDepartmentFilter))
+            all = all.Where(e => e.Department.Name == selectedDepartmentFilter).ToList();
 
         if (!string.IsNullOrWhiteSpace(filterText))
-        {
-            return all
-                .Where(n => n.Name.Contains(filterText, StringComparison.OrdinalIgnoreCase))
-                .ToList();
-        }
+            all = all.Where(e => e.Staff.Name.Contains(filterText, StringComparison.OrdinalIgnoreCase)).ToList();
 
-        var result = new List<OrgNode>();
-        int hideBelowDepth = -1;
-
-        foreach (var node in all)
-        {
-            if (hideBelowDepth != -1)
-            {
-                if (node.Depth > hideBelowDepth)
-                    continue;
-
-                hideBelowDepth = -1;
-            }
-
-            result.Add(node);
-
-            if (node.Role == "Department" && collapsedDepartments.Contains(node.Name))
-                hideBelowDepth = node.Depth;
-        }
-
-        return result;
+        return all;
     }
 
-    void HandleRowClick(OrgNode node, bool isDepartment, bool hasCalls)
+    void HandleToggleStaff(StaffMember staff, bool hasCalls)
     {
-        if (isDepartment)
-        {
-            if (!collapsedDepartments.Add(node.Name))
-                collapsedDepartments.Remove(node.Name);
-        }
-        else if (hasCalls)
-        {
-            if (!expandedStaff.Add(node.Source))
-                expandedStaff.Remove(node.Source);
-        }
+        if (!hasCalls)
+            return;
+
+        if (!expandedStaff.Add(staff))
+            expandedStaff.Remove(staff);
     }
 
+    // A short, purely cosmetic reference code (e.g. "TS-01"), derived from
+    // the department's initials and the staff member's position within it.
+    // Not stored anywhere: recomputed on the fly from data that already
+    // exists, so it never needs to be kept in sync with anything.
+    static string StaffCode(Department department, StaffMember staff)
+    {
+        var siblings = department.Children.OfType<StaffMember>().ToList();
+        int index = siblings.IndexOf(staff) + 1;
+
+        var words = department.Name.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        var initials = string.Concat(words.Take(2).Select(w => char.ToUpperInvariant(w[0])));
+        if (initials.Length == 0) initials = "DP";
+
+        return $"{initials}-{index:00}";
+    }
+
+    // A real, derived status rather than an invented "Active/Inactive"
+    // flag: whether any of this person's calls is currently open.
+    static string StaffAvailability(StaffMember staff)
+    {
+        var calls = staff.GetCalls().ToList();
+        if (calls.Any(c => c.Status == "On Call")) return "On Call";
+        if (calls.Any(c => c.Status == "On Hold")) return "On Hold";
+        return "Available";
+    }
+
+    static string AvailabilityBadgeClass(string availability) => availability switch
+    {
+        "On Call" => "bg-success",
+        "On Hold" => "bg-warning text-dark",
+        _ => "bg-secondary"
+    };
+
+    static TimeSpan AverageDuration(IOrgComponent node)
+    {
+        var durations = node.GetCalls().Select(c => c.Duration).ToList();
+        if (durations.Count == 0)
+            return TimeSpan.Zero;
+
+        var totalTicks = durations.Sum(d => d.Ticks);
+        return TimeSpan.FromTicks(totalTicks / durations.Count);
+    }
+
+    static string StatusBadgeClass(string status) => status switch
+    {
+        "On Call" => "bg-success",
+        "On Hold" => "bg-warning text-dark",
+        _ => "bg-secondary"
+    };
+
+    static string StatusAccentClass(string status) => status switch
+    {
+        "On Call" => "is-on-call",
+        "On Hold" => "is-on-hold",
+        _ => "is-ended"
+    };
+
+    bool CanSubmitStaff =>
+        !string.IsNullOrWhiteSpace(selectedDepartment) &&
+        !string.IsNullOrWhiteSpace(newStaffName) &&
+        !string.IsNullOrWhiteSpace(newStaffRole);
+
+    bool CanSubmitDepartment =>
+        !string.IsNullOrWhiteSpace(selectedParentDepartment) &&
+        !string.IsNullOrWhiteSpace(newDepartmentName);
+
+    void OpenAddStaffModal()
+    {
+        staffFormError = "";
+        staffFormSuccess = "";
+        showAddStaffModal = true;
+    }
+
+    void CloseAddStaffModal()
+    {
+        showAddStaffModal = false;
+        newStaffName = "";
+        newStaffRole = "";
+        staffFormError = "";
+        staffFormSuccess = "";
+    }
+
+    void OpenAddDepartmentModal()
+    {
+        departmentFormError = "";
+        departmentFormSuccess = "";
+        showAddDepartmentModal = true;
+    }
+
+    void CloseAddDepartmentModal()
+    {
+        showAddDepartmentModal = false;
+        newDepartmentName = "";
+        departmentFormError = "";
+        departmentFormSuccess = "";
+    }
+
+    // Goes through the Proxy: only a Manager reaches CallCenterAppService
+    // from here, exactly like every guarded action on the Call Access page.
+    // The modal stays open on success so several staff can be added in a
+    // row without reopening it each time.
     void HandleAddStaff()
     {
         try
@@ -228,25 +478,68 @@
             if (string.IsNullOrWhiteSpace(selectedDepartment))
                 throw new ArgumentException("Choose a department first.");
 
-            AppService.AddStaffMember(selectedDepartment, newStaffName, newStaffRole);
+            Service.AddStaffMember(selectedDepartment, newStaffName, newStaffRole);
 
-            formSuccess = $"Added {newStaffName.Trim()} to {selectedDepartment}.";
-            formError = "";
-
-            // Make sure the new row can't be hidden by a leftover filter
-            // or a collapsed department.
+            staffFormSuccess = $"Added {newStaffName.Trim()} to {selectedDepartment}.";
+            staffFormError = "";
             filterText = "";
-            collapsedDepartments.Remove(selectedDepartment);
 
             newStaffName = "";
             newStaffRole = "";
         }
+        catch (AccessDeniedException ex)
+        {
+            staffFormSuccess = "";
+            staffFormError = ex.Message;
+        }
         catch (ArgumentException ex)
         {
-            formSuccess = "";
-            formError = ex.Message;
+            staffFormSuccess = "";
+            staffFormError = ex.Message;
         }
     }
 
-    public void Dispose() => AppService.StateChanged -= HandleChanged;
+    // Goes straight to CallCenterAppService rather than through the Proxy:
+    // AddDepartment isn't one of the Proxy's guarded operations yet (see
+    // the note on CallCenterAppService.AddDepartment). The button is still
+    // hidden from non-Managers above, for a consistent experience.
+    void HandleAddDepartment()
+    {
+        try
+        {
+            if (string.IsNullOrWhiteSpace(selectedParentDepartment))
+                throw new ArgumentException("Choose a parent department first.");
+
+            AppService.AddDepartment(selectedParentDepartment, newDepartmentName);
+
+            departmentFormSuccess = $"Added {newDepartmentName.Trim()} under {selectedParentDepartment}.";
+            departmentFormError = "";
+
+            newDepartmentName = "";
+        }
+        catch (ArgumentException ex)
+        {
+            departmentFormSuccess = "";
+            departmentFormError = ex.Message;
+        }
+    }
+
+    void HandleRemove(IOrgComponent? parent, IOrgComponent node)
+    {
+        try
+        {
+            AppService.RemoveNode(parent, node);
+            removeError = "";
+        }
+        catch (ArgumentException ex)
+        {
+            removeError = ex.Message;
+        }
+    }
+
+    public void Dispose()
+    {
+        Service.StateChanged -= HandleChanged;
+        Session.Changed -= HandleChanged;
+    }
 }

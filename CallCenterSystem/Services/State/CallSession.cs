@@ -47,7 +47,16 @@ namespace CallCenterSystem.Services.State
         public void AddHoldSecond() => HoldTime = HoldTime.Add(TimeSpan.FromSeconds(1));
 
         // Called once, by HungUpState, when the call ends. Pushes the final
-        // recorded duration onto the shared Call so the log/iterator reflect it
-        public void SaveFinalDuration() => Call.Duration = TalkTime;
+        // recorded duration onto the shared Call so the log/iterator reflect it.
+        //
+        // TalkTime/HoldTime were already tracked live above; this is the one
+        // line added so that split survives past the session ending, letting
+        // the Departments page show more than just a combined duration.
+        public void SaveFinalDuration()
+        {
+            Call.Duration = TalkTime;
+            Call.TalkTime = TalkTime;
+            Call.HoldTime = HoldTime;
+        }
     }
 }

@@ -102,6 +102,52 @@ namespace CallCenterSystem.Services
             NotifyStateChanged();
         }
 
+        // Adds a new sub-department (Composite) underneath an existing one.
+        // This is what makes the tree's depth genuinely dynamic rather than
+        // a fixed shape decided once in BuildOrganization: a department
+        // created here can itself later hold staff or further departments,
+        // and every rollup (GetStaffCount, GetTotalCalls) picks it up
+        // automatically because it goes through the same IOrgComponent
+        // interface as everything else.
+        //
+        // Note: unlike AddStaffMember, this isn't yet one of the Proxy's
+        // guarded operations (CallCenterOperation has no AddDepartment
+        // entry), so the Departments page calls this directly rather than
+        // through ICallCenterService. Extending the permission matrix to
+        // cover it is a natural next step for whoever owns the Proxy.
+        public void AddDepartment(string parentDepartmentName, string newDepartmentName)
+        {
+            var parent = _organization.FindDepartment(parentDepartmentName)
+                ?? throw new ArgumentException("Choose a valid parent department.");
+
+            string nameError = ValidateName(newDepartmentName);
+            if (nameError != "") throw new ArgumentException(nameError);
+
+            var trimmedName = newDepartmentName.Trim();
+            if (_organization.FindDepartment(trimmedName) != null)
+                throw new ArgumentException($"A department named '{trimmedName}' already exists.");
+
+            parent.Add(new Department(trimmedName));
+            NotifyStateChanged();
+        }
+
+        // Removes a staff member, or an empty department, from its parent.
+        // Departments with staff or sub-departments still inside them are
+        // refused rather than cascade-deleted, so a stray click can't wipe
+        // out a whole branch of the tree by accident. The root has no
+        // parent and can never be removed.
+        public void RemoveNode(IOrgComponent? parent, IOrgComponent node)
+        {
+            if (parent is not Department parentDepartment)
+                throw new ArgumentException("The top-level department cannot be removed.");
+
+            if (node is Department department && (department.GetStaffCount() > 0 || department.Children.Count > 0))
+                throw new ArgumentException("Remove everything inside this department first.");
+
+            parentDepartment.Remove(node);
+            NotifyStateChanged();
+        }
+
         // Manually raised by ActiveCall.razor when a live session's state
         // changes (connect, hold, hang up, or each tick), so the Call Log
         // and Departments pages can refresh live instead of waiting for
@@ -126,7 +172,7 @@ namespace CallCenterSystem.Services
             // A sub-team nested inside Technical Support, showing the
             // Composite recursing through more than one level.
             var helpDesk = new Department("Help Desk");
-            helpDesk.Add(new StaffMember("Bantu Khumalo", "Technician", () => CallsFor("Bantu Khumalo")));
+            helpDesk.Add(new StaffMember("John Khumalo", "Technician", () => CallsFor("John Khumalo")));
             technicalSupport.Add(helpDesk);
 
             var studentServices = new Department("Student Services");

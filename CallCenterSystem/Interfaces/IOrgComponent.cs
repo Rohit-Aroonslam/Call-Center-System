@@ -34,12 +34,15 @@ namespace CallCenterSystem.Interfaces
 
         // Flattens this node and all of its descendants into a
         // depth-ordered list, so simpler UI (or a report) can render the
-        // whole tree with a single loop instead of recursive markup.
-        IEnumerable<OrgNode> Flatten(int depth = 0);
+        // whole tree with a single loop instead of recursive markup. Each
+        // row also carries its own parent, so the UI can remove a node
+        // (via the parent's Remove) without a separate lookup.
+        IEnumerable<OrgNode> Flatten(int depth = 0, IOrgComponent? parent = null);
     }
 
     // One row of the flattened org tree. Carries the underlying node
-    // (Source) too, not just display fields, so a flat UI loop can still
-    // reach GetCalls() for a staff member without any recursion.
-    public record OrgNode(int Depth, string Name, string Role, int StaffCount, int TotalCalls, IOrgComponent Source);
+    // (Source) and its immediate parent, not just display fields, so a
+    // flat UI loop can reach GetCalls() or remove a node without any
+    // recursion or a second tree search.
+    public record OrgNode(int Depth, string Name, string Role, int StaffCount, int TotalCalls, IOrgComponent Source, IOrgComponent? Parent);
 }
