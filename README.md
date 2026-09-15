@@ -56,7 +56,7 @@ and controlled, audited access to the system.
 | Marcellos | State Design Pattern |
 | Amity | Composite Design Pattern |
 | Bantu | Proxy Design Pattern |
-| Jodi | Documentation |
+| Jodi | Documentation & UML Design  |
 
 ---
 
