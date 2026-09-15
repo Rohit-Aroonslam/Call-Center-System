@@ -20,8 +20,8 @@ namespace CallCenterSystem.Services.Proxy
         Call? FindCall(int callId);
 
         // The privileged operation the brief names: the manager returning a call
-        // from the virtual call log. It did not exist as a method before — the
-        // UI built a CallSession inline — so it is introduced here.
+        // from the virtual call log. It did not exist as a method before - the
+        // UI built a CallSession inline - so it is introduced here.
         CallSession ReturnCall(int callId);
 
         IOrgComponent GetOrganization();

@@ -7,12 +7,12 @@
 @inject AccessAuditLog Audit
 @inject NavigationManager Nav
 
-<PageTitle>Call Access — Student Support Call Center</PageTitle>
+<PageTitle>Call Access - Student Support Call Center</PageTitle>
 
 <h3 class="mb-1">Call Access</h3>
 <p class="text-muted">
     Every request below goes through <code>CallCenterServiceProxy</code>. This page
-    never checks a role itself — it calls the service and reports what came back.
+    never checks a role itself - it calls the service and reports what came back.
 </p>
 
 @if (!Session.IsAuthenticated)
@@ -133,7 +133,7 @@ else
     <button class="btn btn-sm btn-outline-secondary" @onclick="ClearAudit">Clear</button>
 </div>
 <p class="text-muted small">
-    Written by the Proxy on every guarded call — this is the logging
+    Written by the Proxy on every guarded call - this is the logging
     responsibility layered on top of protection.
 </p>
 
@@ -153,7 +153,7 @@ else
                 <tr>
                     <td>@a.Timestamp.ToString("HH:mm:ss")</td>
                     <td>@a.Username</td>
-                    <td>@(a.Role?.ToString() ?? "—")</td>
+                    <td>@(a.Role?.ToString() ?? "-")</td>
                     <td>@a.Operation</td>
                     <td>
                         @if (a.Allowed)
@@ -178,7 +178,7 @@ else
     private bool _denied;
     private List<Call>? _visibleCalls;
 
-    // Loaded on demand into a field, never called from the render body —
+    // Loaded on demand into a field, never called from the render body -
     // otherwise every re-render would write another audit row.
     private void BrowseLog()
     {

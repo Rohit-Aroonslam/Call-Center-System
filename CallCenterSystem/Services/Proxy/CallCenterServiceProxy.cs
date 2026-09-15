@@ -12,7 +12,7 @@ namespace CallCenterSystem.Services.Proxy
     // the same ICallCenterService interface as the RealSubject, so every caller
     // is unaware it is talking to a surrogate. Each method does exactly three
     // things: check the permission matrix for the current user's role, record
-    // the attempt, then delegate. No business logic lives here — that stays in
+    // the attempt, then delegate. No business logic lives here - that stays in
     // the RealSubject.
     public class CallCenterServiceProxy : ICallCenterService
     {
