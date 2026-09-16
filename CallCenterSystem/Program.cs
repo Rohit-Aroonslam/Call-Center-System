@@ -16,12 +16,15 @@ namespace CallCenterSystem
                 .AddInteractiveServerComponents();
 
             builder.Services.AddSingleton<CallCenterAppService>();
+
             // --- Proxy pattern (Bantu) ---
+            // CallCenterAppService is the RealSubject; the Proxy wraps it and is
+            // what every page resolves. Nothing injects the concrete service.
             builder.Services.AddSingleton<AccessAuditLog>();
             builder.Services.AddSingleton<ISessionContext, SessionContext>();
             builder.Services.AddSingleton<ICallCenterService>(sp =>
                 new CallCenterServiceProxy(
-                    new CallCenterServiceAdapter(sp.GetRequiredService<CallCenterAppService>()),
+                    sp.GetRequiredService<CallCenterAppService>(),
                     sp.GetRequiredService<ISessionContext>(),
                     sp.GetRequiredService<AccessAuditLog>()));
 

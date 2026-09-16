@@ -1,14 +1,15 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
 using CallCenterSystem.Interfaces;
 using CallCenterSystem.Models;
 using CallCenterSystem.Services.Composite;
 using CallCenterSystem.Services.Iterator;
+using CallCenterSystem.Services.State;
+using System;
+using System.Collections.Generic;
+using System.Linq;
 
 namespace CallCenterSystem.Services
 {
-    public class CallCenterAppService
+    public class CallCenterAppService : ICallCenterService
     {
         private readonly CallLog _callLog = new();
         private int _nextId = 1;
@@ -51,6 +52,15 @@ namespace CallCenterSystem.Services
             NotifyStateChanged();
             return call;
         }
+
+        public CallSession ReturnCall(int callId)
+        {
+            var call = FindCall(callId)
+                ?? throw new ArgumentException($"No call with ID {callId} in the call log.");
+
+            return new CallSession(call);
+        }
+
 
         // Iterator: walk the log into a display list without exposing internal storage.
         public List<Call> GetAllCalls()

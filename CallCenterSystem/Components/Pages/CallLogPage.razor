@@ -1,6 +1,8 @@
 @page "/call-log"
 @rendermode InteractiveServer
-@inject CallCenterAppService AppService
+@using CallCenterSystem.Services.Proxy
+@inject ICallCenterService Service
+@inject ISessionContext Session
 @implements IDisposable
 
 <PageTitle>Call Log - Student Support Call Center</PageTitle>
@@ -8,8 +10,24 @@
 <h3 class="mb-4">Call Log</h3>
 <p class="text-muted">
     Browse and search through logged calls, or record a new one. This updates live: a call
-    started or ended on the Active Call page shows up here right away.
+    started or ended on the Active Call page shows up here right away. What you can see and
+    search is decided by the Proxy, based on your role.
 </p>
+
+@if (Session.CurrentUser is null)
+{
+    <div class="alert alert-warning">
+        You are not signed in, so the call log is empty.
+        <a href="login" class="alert-link">Sign in</a>
+    </div>
+}
+else if (!canBrowse)
+{
+    <div class="alert alert-secondary py-2">
+        <span class="status-pill">Own calls only</span>
+        @(Session.CurrentUser.Role) accounts see only their own calls and cannot search the log.
+    </div>
+}
 
 <div class="row g-4">
     <!-- Log a new call -->
@@ -48,7 +66,11 @@
                     <button class="btn btn-outline-secondary" @onclick="HandleSearch">Search</button>
                 </div>
 
-                @if (searchResult != null)
+                @if (searchError != "")
+                {
+                    <div class="alert alert-danger py-2 mb-0">@searchError</div>
+                }
+                else if (searchResult != null)
                 {
                     <div class="alert alert-success py-2 mb-0">Match found: @searchResult</div>
                 }
@@ -63,9 +85,15 @@
     <!-- Call log view (Iterator traversal) -->
     <div class="col-md-7">
         <div class="card">
-            <div class="card-header">All Calls</div>
+            <div class="card-header">
+                @(canBrowse ? "All Calls" : "My Calls")
+            </div>
             <ul class="list-group list-group-flush">
-                @foreach (var call in AppService.GetAllCalls())
+                @if (calls.Count == 0)
+                {
+                    <li class="list-group-item text-muted small">No calls visible for this role.</li>
+                }
+                @foreach (var call in calls)
                 {
                     <li class="list-group-item d-flex justify-content-between align-items-center">
                         <span>
@@ -92,22 +120,47 @@
     string searchId = "";
     Call? searchResult;
     bool searchAttempted = false;
+    string searchError = "";
+
+    // Loaded into a field, never called from the markup: every call to
+    // GetAllCalls() goes through the Proxy and writes to the audit trail.
+    List<Call> calls = new();
+    bool canBrowse;
 
     protected override void OnInitialized()
     {
-        AppService.StateChanged += HandleChanged;
+        Service.StateChanged += HandleChanged;
+        Session.Changed += HandleChanged;
+        LoadCalls();
     }
 
-    void HandleChanged() => InvokeAsync(StateHasChanged);
+    void HandleChanged() => InvokeAsync(() =>
+    {
+        LoadCalls();
+        StateHasChanged();
+    });
+
+    void LoadCalls()
+    {
+        var role = Session.CurrentUser?.Role;
+        canBrowse = role.HasValue && Permissions.IsAllowed(role.Value, CallCenterOperation.BrowseCallLog);
+
+        calls = Service.GetAllCalls();   // never throws: narrows or returns empty
+    }
 
     void HandleAddCall()
     {
         try
         {
-            AppService.AddCall(callerName, phoneNumber);
+            Service.AddCall(callerName, phoneNumber);
             callerName = "";
             phoneNumber = "";
             errorMessage = "";
+            LoadCalls();
+        }
+        catch (AccessDeniedException ex)
+        {
+            errorMessage = ex.Message;
         }
         catch (ArgumentException ex)
         {
@@ -118,7 +171,18 @@
     void HandleSearch()
     {
         searchAttempted = true;
-        searchResult = int.TryParse(searchId, out int id) ? AppService.FindCall(id) : null;
+        searchResult = null;
+        searchError = "";
+
+        try
+        {
+            if (int.TryParse(searchId, out int id))
+                searchResult = Service.FindCall(id);
+        }
+        catch (AccessDeniedException ex)
+        {
+            searchError = ex.Message;
+        }
     }
 
     string StatusBadgeClass(string status) => status switch
@@ -128,5 +192,9 @@
         _ => "bg-secondary"
     };
 
-    public void Dispose() => AppService.StateChanged -= HandleChanged;
+    public void Dispose()
+    {
+        Service.StateChanged -= HandleChanged;
+        Session.Changed -= HandleChanged;
+    }
 }

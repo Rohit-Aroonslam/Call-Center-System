@@ -1,6 +1,8 @@
 @page "/active-call"
 @rendermode InteractiveServer
-@inject CallCenterAppService AppService
+@using CallCenterSystem.Services.Proxy
+@inject ICallCenterService Service
+@inject ISessionContext Session
 @using CallCenterSystem.Services.State
 @implements IDisposable
 
@@ -46,14 +48,23 @@
         <div class="card mt-3">
             <div class="card-header">Return a Call from the Log</div>
             <div class="card-body">
+                <p class="text-muted small">
+                    Returning a logged call is a Manager-only action. The Proxy decides,
+                    not this page.
+                </p>
                 <label class="form-label">Select a logged call</label>
                 <select class="form-select" @bind="selectedCallId" @bind:after="HandleSelectCall">
                     <option value="0">-- choose a call --</option>
-                    @foreach (var call in AppService.GetAllCalls())
+                    @foreach (var call in logCalls)
                     {
                         <option value="@call.Id">@call</option>
                     }
                 </select>
+
+                @if (sessionError != "")
+                {
+                    <div class="alert alert-danger py-2 mt-3 mb-0">@sessionError</div>
+                }
             </div>
         </div>
     </div>
@@ -103,17 +114,47 @@
     CallSession? session;
     System.Timers.Timer? ticker;
 
+    List<Call> logCalls = new();
+    string sessionError = "";
+
+    protected override void OnInitialized()
+    {
+        Service.StateChanged += HandleChanged;
+        Session.Changed += HandleChanged;
+        LoadCalls();
+    }
+
+    void HandleChanged() => InvokeAsync(() =>
+    {
+        LoadCalls();
+        StateHasChanged();
+    });
+
+    void LoadCalls() => logCalls = Service.GetAllCalls();
+
     void HandleStartNewCall()
     {
         try
         {
-            var call = AppService.AddCall(newCallerName, newPhoneNumber);
+            var call = Service.AddCall(newCallerName, newPhoneNumber);
             newCallerName = "";
             newPhoneNumber = "";
             newCallError = "";
+            sessionError = "";
 
             selectedCallId = call.Id;
-            OpenSession(call.Id);
+
+            // A brand-new call is not being retrieved from the log, so it opens
+            // a session directly. Logging the call was the guarded step.
+            StopTicker();
+            session = new CallSession(call);
+            StartTicker();
+
+            Service.NotifyCallsChanged();
+        }
+        catch (AccessDeniedException ex)
+        {
+            newCallError = ex.Message;
         }
         catch (ArgumentException ex)
         {
@@ -121,32 +162,42 @@
         }
     }
 
-    void HandleSelectCall() => OpenSession(selectedCallId);
-
-    void OpenSession(int callId)
+    void HandleSelectCall()
     {
         StopTicker();
+        session = null;
+        sessionError = "";
 
-        var call = callId == 0 ? null : AppService.FindCall(callId);
-        session = call == null ? null : new CallSession(call);
+        if (selectedCallId == 0)
+            return;
 
-        if (session != null)
+        try
+        {
+            session = Service.ReturnCall(selectedCallId);
             StartTicker();
-
-        AppService.NotifyCallsChanged();
+            Service.NotifyCallsChanged();
+        }
+        catch (AccessDeniedException ex)
+        {
+            sessionError = ex.Message;
+        }
+        catch (ArgumentException ex)
+        {
+            sessionError = ex.Message;
+        }
     }
 
     void HandleConnect()
     {
         session?.Connect();
-        AppService.NotifyCallsChanged();
+        Service.NotifyCallsChanged();
         StopTickerIfEnded();
     }
 
     void HandleHold()
     {
         session?.Hold();
-        AppService.NotifyCallsChanged();
+        Service.NotifyCallsChanged();
         StopTickerIfEnded();
     }
 
@@ -154,7 +205,7 @@
     {
         session?.HangUp();
         StopTicker();
-        AppService.NotifyCallsChanged();
+        Service.NotifyCallsChanged();
         StateHasChanged();
     }
 
@@ -171,7 +222,7 @@
         ticker.Elapsed += (_, _) => InvokeAsync(() =>
         {
             session?.Tick();
-            AppService.NotifyCallsChanged();
+            Service.NotifyCallsChanged();
             StateHasChanged();
         });
         ticker.AutoReset = true;

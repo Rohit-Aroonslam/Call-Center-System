@@ -2,7 +2,6 @@
 @rendermode InteractiveServer
 @inject ICallCenterService Service
 @inject ISessionContext Session
-@inject CallCenterAppService AppService
 @using CallCenterSystem.Interfaces
 @using CallCenterSystem.Services.Composite
 @using CallCenterSystem.Services.Proxy
@@ -510,7 +509,7 @@ else
             if (string.IsNullOrWhiteSpace(selectedParentDepartment))
                 throw new ArgumentException("Choose a parent department first.");
 
-            AppService.AddDepartment(selectedParentDepartment, newDepartmentName);
+            Service.AddDepartment(selectedParentDepartment, newDepartmentName);
 
             departmentFormSuccess = $"Added {newDepartmentName.Trim()} under {selectedParentDepartment}.";
             departmentFormError = "";
@@ -528,7 +527,7 @@ else
     {
         try
         {
-            AppService.RemoveNode(parent, node);
+            Service.RemoveNode(parent, node);
             removeError = "";
         }
         catch (ArgumentException ex)

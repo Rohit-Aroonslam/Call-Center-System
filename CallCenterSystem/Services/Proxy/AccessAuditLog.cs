@@ -15,6 +15,18 @@
 
         public void Record(AccessAttempt attempt)
         {
+            var last = _attempts.LastOrDefault();
+
+            if (last is not null &&
+                last.Username == attempt.Username &&
+                last.Role == attempt.Role &&
+                last.Operation == attempt.Operation &&
+                last.Allowed == attempt.Allowed &&
+                last.Detail == attempt.Detail &&
+                (attempt.Timestamp - last.Timestamp) < TimeSpan.FromSeconds(3))
+            {
+                return;
+            }
             _attempts.Add(attempt);
             Changed?.Invoke();
         }

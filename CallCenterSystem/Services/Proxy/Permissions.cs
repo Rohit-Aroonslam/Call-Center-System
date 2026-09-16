@@ -28,7 +28,9 @@ namespace CallCenterSystem.Services.Proxy
                 CallCenterOperation.SearchCallLog,
                 CallCenterOperation.ViewOrganization,
                 CallCenterOperation.AddStaffMember,
-                CallCenterOperation.ReturnCall
+                CallCenterOperation.ReturnCall,
+                CallCenterOperation.AddDepartment,
+                CallCenterOperation.RemoveOrgNode
             }
         };
 

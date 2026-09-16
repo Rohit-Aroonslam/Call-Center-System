@@ -10,6 +10,8 @@
         SearchCallLog,
         ReturnCall,
         ViewOrganization,
-        AddStaffMember
+        AddStaffMember,
+        AddDepartment,
+        RemoveOrgNode
     }
 }

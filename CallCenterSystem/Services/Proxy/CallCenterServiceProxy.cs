@@ -140,10 +140,24 @@ namespace CallCenterSystem.Services.Proxy
             return _real.GetDepartments();
         }
 
+
+
         public void AddStaffMember(string departmentName, string name, string role)
         {
             Guard(CallCenterOperation.AddStaffMember, $"{name} ({role}) → {departmentName}");
             _real.AddStaffMember(departmentName, name, role);
+        }
+
+        public void AddDepartment(string parentDepartmentName, string newDepartmentName)
+        {
+            Guard(CallCenterOperation.AddDepartment, $"{newDepartmentName} under {parentDepartmentName}");
+            _real.AddDepartment(parentDepartmentName, newDepartmentName);
+        }
+
+        public void RemoveNode(IOrgComponent? parent, IOrgComponent node)
+        {
+            Guard(CallCenterOperation.RemoveOrgNode, $"{node.Name} from {parent?.Name ?? "root"}");
+            _real.RemoveNode(parent, node);
         }
 
         // Unguarded: a UI refresh notification carries no privileged data.
